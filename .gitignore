@@ -1,0 +1,44 @@
+# Scan output files
+ping_sweep_*
+full_scan_*
+*.xml
+*.nmap
+*.gnmap
+
+# Metasploit
+.msf4/
+*.rc.log
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Credentials and sensitive data
+credentials.txt
+passwords.txt
+hashes.txt
+*.key
+*.pem
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Local notes (keep your personal notes private)
+notes/
+TODO.txt
