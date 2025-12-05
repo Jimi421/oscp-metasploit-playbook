@@ -22,7 +22,7 @@ A collection of automation scripts to streamline reconnaissance and exploitation
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/oscp-automation-toolkit.git
+git clone https://github.com/jimi421/oscp-automation-toolkit.git
 cd oscp-automation-toolkit
 chmod +x auto_recon.sh
 ```
