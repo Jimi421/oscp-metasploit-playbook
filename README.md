@@ -1,4 +1,4 @@
-# OSCP Automation Toolkit
+# OSCP Metasploit Playbook
 
 A collection of automation scripts to streamline reconnaissance and exploitation workflows for OSCP preparation and penetration testing.
 
@@ -22,12 +22,20 @@ A collection of automation scripts to streamline reconnaissance and exploitation
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/jimi421/oscp-automation-toolkit.git
-cd oscp-automation-toolkit
-chmod +x auto_recon.sh
+git clone https://github.com/jimi421/oscp-metasploit-playbook.git
+cd oscp-metasploit-playbook
+chmod +x auto_recon.sh setup.sh setup/auto_nmap.sh
 ```
 
-### 2. Run Network Reconnaissance
+### 2. Run Setup Checks (First Time)
+
+```bash
+./setup.sh
+```
+
+The setup script verifies required tools (nmap, Metasploit, sudo, ip), checks network interfaces, and ensures scripts are executable.
+
+### 3. Run Network Reconnaissance
 
 ```bash
 sudo ./auto_recon.sh
@@ -39,7 +47,7 @@ This script will:
 - Conduct comprehensive nmap scans on live hosts
 - Save results in XML, nmap, and gnmap formats
 
-### 3. Import to Metasploit
+### 4. Import to Metasploit
 
 ```bash
 msfconsole -r setup_msf.rc
@@ -54,11 +62,16 @@ This resource script will:
 ## 📁 File Structure
 
 ```
-oscp-automation-toolkit/
+oscp-metasploit-playbook/
 ├── auto_recon.sh        # Main reconnaissance script
+├── setup.sh             # Dependency checks and permissions
 ├── setup_msf.rc         # Metasploit resource script
-├── README.md            # This file
-└── .gitignore           # Git ignore patterns
+├── protocols/           # Protocol-specific reference notes (http, smb, winrm)
+├── setup/               # Supplemental setup helpers
+│   └── auto_nmap.sh     # Metasploit-integrated nmap helper
+├── PROJECT_SUMMARY.md   # Project overview
+├── QUICK_REFERENCE.md   # One-page command reference
+└── README.md            # This file
 ```
 
 ## 🔧 Script Details
