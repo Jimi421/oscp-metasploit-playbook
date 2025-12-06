@@ -4,8 +4,8 @@
 
 ### 1. Initial Setup (First Time Only)
 ```bash
-git clone https://github.com/yourusername/oscp-automation-toolkit.git
-cd oscp-automation-toolkit
+git clone https://github.com/jimi421/oscp-metasploit-playbook.git
+cd oscp-metasploit-playbook
 ./setup.sh
 ```
 
