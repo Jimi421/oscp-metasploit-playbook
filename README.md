@@ -33,7 +33,7 @@ chmod +x auto_recon.sh setup.sh setup/auto_nmap.sh
 ./setup.sh
 ```
 
-The setup script verifies required tools (nmap, Metasploit, sudo, ip), checks network interfaces, and ensures scripts are executable.
+The top-level `setup.sh` is the canonical setup entry point. It verifies required tools (nmap, Metasploit, sudo, ip), checks network interfaces, and ensures scripts are executable. Protocol folders reuse this shared script through thin wrappers.
 
 ### 3. Run Network Reconnaissance
 

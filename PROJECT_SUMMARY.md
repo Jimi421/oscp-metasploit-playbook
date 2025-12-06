@@ -19,7 +19,7 @@ Your GitHub repository foundation includes:
    - Sets LHOST from eth0
    - Displays summary of hosts/services
 
-3. **setup.sh** - Installation verification
+3. **setup.sh** - Canonical installation verification (run from repo root)
    - Checks all dependencies
    - Verifies interface configuration
    - Tests Metasploit database
