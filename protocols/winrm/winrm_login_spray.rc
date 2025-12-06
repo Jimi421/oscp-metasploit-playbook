@@ -1,0 +1,45 @@
+##
+# WinRM login spray / validation
+#
+# Usage pattern:
+#
+#   # 1) Populate RHOSTS from services (or a single host):
+#   resource protocols/winrm/winrm_access/winrm_targets.rc
+#   # or:
+#   setg RHOSTS 10.10.10.5
+#
+#   # 2) Choose your wordlists:
+#   setg USER_FILE /path/to/users.txt
+#   setg PASS_FILE /path/to/passwords.txt
+#
+#   # 3) Run:
+#   resource protocols/winrm/winrm_access/winrm_login_spray.rc
+#
+# This RC does NOT brute force blindly in real-world style.
+# It's for targeted spraying / validation in labs and authorized tests.
+##
+
+spool logs/winrm_login_spray.log
+
+workspace
+echo [*] RHOSTS:     (set this before running: setg RHOSTS <target(s)>)
+echo [*] USER_FILE:  (setg USER_FILE /path/to/users.txt)
+echo [*] PASS_FILE:  (setg PASS_FILE /path/to/passwords.txt)
+
+use auxiliary/scanner/winrm/winrm_login
+
+# Rely on globals you set
+set RHOSTS  ${RHOSTS}
+set USER_FILE  ${USER_FILE}
+set PASS_FILE  ${PASS_FILE}
+set VERBOSE false
+
+# Required by newer versions unless using Kerberos; value itself isn't used with USER_FILE/PASS_FILE
+set PASSWORD anything
+
+run
+
+spool off
+
+# After this, read the log or module output for "SUCCESS" lines.
+

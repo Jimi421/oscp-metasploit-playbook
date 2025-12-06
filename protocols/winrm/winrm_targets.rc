@@ -1,0 +1,27 @@
+##
+# WinRM target discovery (Metasploit DB driven)
+#
+# Usage (after db_import via auto_msf_latest.rc):
+#   msfconsole -q -r protocols/winrm/winrm_access/winrm_targets.rc
+#
+# Effect:
+#   - Shows hosts with 5985/5986 open
+#   - Sets RHOSTS to those hosts (services -p ... -R)
+##
+
+spool logs/winrm_targets.log
+
+workspace
+echo [*] Looking for WinRM ports 5985/5986 in current workspace...
+
+# Show what we have
+services -p 5985,5986
+
+# Set RHOSTS from services
+services -p 5985,5986 -R
+
+echo [*] RHOSTS has been set to hosts with WinRM from services.
+echo [*] You can confirm with: show options (after selecting a module).
+
+spool off
+

