@@ -6,6 +6,7 @@
 ```bash
 git clone https://github.com/jimi421/oscp-metasploit-playbook.git
 cd oscp-metasploit-playbook
+# Run the canonical setup script from the repository root
 ./setup.sh
 ```
 
